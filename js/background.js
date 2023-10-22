@@ -1,3 +1,5 @@
+import OPENAI_API_KEY from env
+
 // この拡張機能がオンになっているときはindex.htmlを表示し，テーマとアイデア出しを行ってもらう
 
 
@@ -35,12 +37,11 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
 
 // LLMによってアイデア✖️キーワードで新しいアイデアを生成する
 async function NewIdeaFromLLM(theme,keyword,original_idea){
-  const apiKey = "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"
   const IdeaCreatedByLLM = await fetch("https://api.openai.com/v1/chat/completions",{
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
       model: "gpt-4",
