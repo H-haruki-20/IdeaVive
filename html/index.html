@@ -4,11 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../css/index.css">
-    <title>Document</title>
+    <title>IdeaVive</title>
 </head>
 <body>
-    <h1>This is IdeaVive's website.</h1>
-    アイデアのテーマとアイデアを提案できるWebサイトをここに構築する
-    英語と日本語の設定もここで行うこと
+    <header class="default-header">
+        <div id="header-logo">
+            <a href="#" class="header-logo-link">
+                <img src="../img/logo.png" width="100" class="header-logo-img">
+            </a>
+        </div>
+    </header>
+
+    <div id="init" class="container">
+        <div class="element">
+            <span class="label">
+                OpenAI API Key : 
+            </span>
+            <input id="api_key" class="input-txt">
+        </div>
+        <div class="element">
+            <span class="label">
+                テーマ名 / Theme name : 
+            </span>
+            <input id="theme" class="input-txt" maxlength="1000" placeholder type="text">
+        </div>
+
+        <div class="element">
+            <span class="label">
+                言語を選択 / Select language :
+            </span>
+            <label class="selectbox-006">
+                <select id="lang">
+                    <option value="jp">日本語</option>
+                    <option value="en">English</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="element">
+            <button class="btn" id="start">
+                <div class="button-container">
+                    はじめる
+                </div>
+            </button>
+        </div>
+    </div>
+    <div id="idea-generation">
+        <div class="idea_display" id="idea_display">
+
+        </div>
+        <div class="idea_input">
+            <div class="element">
+                <span class="label">
+                    アイデアを書いてみよう 
+                </span>
+                <input id="idea" class="input-txt" maxlength="1000" placeholder type="text">
+            </div>
+            <div class="element">
+                <button class="btn" id="post">
+                    <div class="button-container">
+                        送信
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/app.js"></script>
 </body>
 </html>

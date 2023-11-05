@@ -1,4 +1,4 @@
-// ---------- This script is for starting IdeaVive ----------- //
+// ---------- This script is for popup menu ----------- //
 
 const button = document.getElementById("start-ideavive");
 button.addEventListener("click", () => {

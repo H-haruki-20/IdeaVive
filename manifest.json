@@ -3,9 +3,12 @@
   "version": "1.0",
   "content_scripts": [
     {
-      "matches": ["https://news.yahoo.co.jp/*"],
+      "matches": [
+        "https://news.yahoo.co.jp/*",
+        "https://www.bbc.com/news/*"
+      ],
       "js": [
-        "js/app.js"
+        "js/content.js"
       ]
     }
   ],
@@ -14,10 +17,11 @@
   },
   "permissions": [
     "notifications",
-    "tabs"
+    "tabs",
+    "storage"
   ],
   "action": {
-    "default_icon": "icon.png",
+    "default_icon": "img/icon.png",
     "default_popup": "html/popup.html"
   },
   "manifest_version": 3
