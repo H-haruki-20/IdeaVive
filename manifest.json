@@ -1,5 +1,5 @@
 {
-  "name": "Chrome Extension For Study",
+  "name": "IdeaVive",
   "version": "1.0",
   "content_scripts": [
     {
@@ -12,6 +12,15 @@
       ]
     }
   ],
+  "description": 
+  "あなたの出したアイデアを育てます"
+  ,
+  "icons": {
+    "16": "img/icon.png",
+    "32": "img/icon.png",
+    "48": "img/icon.png",
+    "128": "img/icon.png"
+  },
   "background" : {
     "service_worker" : "js/background.js"
   },

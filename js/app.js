@@ -27,7 +27,6 @@ function btn_clicked(){
     options:{
       language : lang.value,
       theme : theme.value,
-      apiKey : api_key.value
     }
   });
   init.style.display = "none";
@@ -48,8 +47,7 @@ function post_clicked(){
   const ideaContent = document.createTextNode(idea.value);
   const room_cover = document.createElement("div");
   room_cover.className = "room_cover";
-  const room = document.createElement("a");
-  room.href = "idea.html";
+  const room = document.createElement("div");
   room.className = "room";
   const headline = document.createElement("h3");
   headline.className = "room_title";

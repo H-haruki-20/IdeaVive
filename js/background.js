@@ -1,12 +1,15 @@
-
-
 let apiKey = "";
+
+
 // ============ index.htmlとのやりとり ============================== //
 // 1. Get theme
 // 2. Get original idea if exsisted
 // 3. Set language : Japanese or English
 // 4. Prepare Japanese or English Prompt
 let theme = "";
+
+//連想配列を要素に持つ配列 (構造 : {original_idea : "..", id : ".."})
+let original_idea_pool = [];
 let original_idea = "";
 let target_id = "";
 let isJapanese = true;
@@ -22,13 +25,10 @@ chrome.runtime.onMessage.addListener(data => {
     }
     theme = data.options.theme;
     console.log(theme);
-    // Set OpanAI API Key
-    apiKey = data.options.apiKey;
   }
   else if(data.type === "idea-post"){
-    original_idea = data.options.idea;
-    target_id = data.options.target_id;
-    console.log(original_idea);
+    var added_idea = {original_idea : data.options.idea, id : data.options.target_id}
+    original_idea_pool.push(added_idea);
   }
   else if(data.type === "concentrated"){
     console.log("User concentrated");
@@ -44,6 +44,15 @@ chrome.runtime.onMessage.addListener(data => {
           eventTime: 4000
         }
       }
+      // どのアイデアをターゲットとするか選定
+      t = original_idea_pool.length;
+      x = getRandomInt(t);
+      console.log(x);
+      original_idea = original_idea_pool[x].original_idea;
+      target_id = original_idea_pool[x].id;
+      console.log("選ばれたアイデア : " + original_idea);
+
+      // LLMによるアイデアとnotificationの実施
       NewIdeaFromLLM(data);
     }
   }
@@ -194,7 +203,7 @@ chrome.tabs.onUpdated.addListener(function(tabId) {
   }
 });
 
-// タイミングの調整
+// 0 ~ MAX-1までの乱数生成
 function getRandomInt(max){
   return Math.floor(Math.random() * max);
 }
@@ -203,7 +212,7 @@ function getRandomInt(max){
 
 
 // ========== LLMによってアイデア✖️キーワードで新しいアイデアを生成する ================= //
-// 1. 
+
 async function NewIdeaFromLLM(data){
   messages = await MakePrompt(isJapanese,theme,keyword,original_idea);
   const IdeaCreatedByLLM = await fetch("https://api.openai.com/v1/chat/completions",{
@@ -213,7 +222,7 @@ async function NewIdeaFromLLM(data){
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo-0613",
       messages: messages,
       max_tokens: 256,
       temperature: 0.9,
@@ -234,8 +243,7 @@ async function NewIdeaFromLLM(data){
   }
   data.options.eventTime += Date.now();
   // make a notification to user
-  await chrome.notifications.create("idea",data.options);
-
+  await chrome.notifications.create("",data.options);
 
   // proposed idea made by LLM をindex.htmlに表示させる
   llm_json = {
