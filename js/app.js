@@ -5,21 +5,16 @@
 
 console.log("Start IdeaVive!");
 
-// language & theme
+// ========= set language & theme ======== //
 let lang = document.getElementById("lang");
 let theme = document.getElementById("theme");
 let init = document.getElementById("init");
 let start_button = document.getElementById("start");
-let idea_generation = document.getElementById("idea-generation");
-let post_button = document.getElementById("post");
-let idea = document.getElementById("idea");
-let idea_room = document.getElementById("idea_display");
-let api_key = document.getElementById("api_key");
+let room_display = document.getElementById("list");
 
 start_button.addEventListener("click",btn_clicked);
 
-post_button.addEventListener("click",post_clicked);
-
+let id = 0;
 function btn_clicked(){
   chrome.runtime.sendMessage("",
   {
@@ -27,66 +22,40 @@ function btn_clicked(){
     options:{
       language : lang.value,
       theme : theme.value,
+      id : id
     }
   });
+
+  url = `../html/idea.html?id=${id}&lang=${lang.value}&theme=${theme.value}`;
+  window.open(url, '_blank')
+  createNewButton(url,theme.value);
+  id += 1;
+}
+
+function createNewButton(targetURL,title){
   init.style.display = "none";
-  idea_generation.style.display = "block";
-}
-
-// ランダムなIDの生成用
-function getUniqueStr(myStrong){
-  var strong = 1000;
-  if (myStrong) strong = myStrong;
-  return new Date().getTime().toString(16)  + Math.floor(strong*Math.random()).toString(16)
- }
- 
-
-// send ideas which user post
-function post_clicked(){
-  // ideaをリスト形式で表示
-  const ideaContent = document.createTextNode(idea.value);
-  const room_cover = document.createElement("div");
-  room_cover.className = "room_cover";
-  const room = document.createElement("div");
-  room.className = "room";
-  const headline = document.createElement("h3");
-  headline.className = "room_title";
-  headline.appendChild(ideaContent);
-  room.appendChild(headline);
-  const llm_info = document.createElement("h3");
-  llm_info.id = getUniqueStr();
-  room.appendChild(llm_info);
-  room_cover.appendChild(room);
-  idea_room.appendChild(room_cover);
-
-  // backgroundに送信
-  chrome.runtime.sendMessage("",
-  {
-    type: "idea-post",
-    options:{
-      idea : idea.value,
-      target_id : llm_info.id
-    }
-  });
-
-  idea.value = "";
+  background.style.display = "none";
+  // テーマ名をタイトルとしたパネルを作成
+  const div = document.createElement("div");
+  div.className = "room-display";
+  const new_box = document.createElement("a");
+  new_box.className = "new-box";
+  new_box.href = `${targetURL}`
+  new_box.innerText = title;
+  div.appendChild(new_box); 
+  room_display.appendChild(div);
 }
 
 
+// ========= create new room ============== //
+let setInit = document.getElementById("init");
+let create_button = document.getElementById("create");
+let home_menu = document.getElementById("home");
+let background = document.getElementById("popup-background");
 
-// get new ideas made by llm from local storage
-chrome.storage.onChanged.addListener(function(changes,namespace) {
-  console.log("call onchanged");
-  if(namespace === "local"){
-    if(changes.new_idea){
-      console.log("detect change");
-      display(changes.target_id.newValue,changes.new_idea.newValue);
-    }
-  }
-})
+create_button.addEventListener("click",create_new_room);
 
-function display(newId,newIdea){
-  target = document.getElementById(newId);
-  target.innerText = newIdea;
+function create_new_room(){
+  background.style.display = "block";
+  init.style.display = "inline-block";
 }
-

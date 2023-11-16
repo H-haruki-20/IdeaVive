@@ -3,9 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <link rel="stylesheet" href="../css/index.css">
+    <title>IdeaVive</title>
 </head>
 <body>
-    ここにアイデアの詳細を表示
+    <header class="default-header">
+        <div id="header-logo">
+            <a href="#" class="header-logo-link">
+                <img src="../img/logo.png" width="100" class="header-logo-img">
+            </a>
+        </div>
+        <div id="theme-title">
+            <h1 id="theme">
+                ここにテーマ名
+            </h1>
+        </div>
+    </header>
+
+
+    <div id="idea-generation">
+        <div class="idea_display" id="idea_display">
+
+        </div>
+        <div class="idea_input">
+            <div class="element">
+                <span class="label" id="write-idea">
+                    アイデアを書いてみよう 
+                </span>
+                <input id="idea" class="input-txt" maxlength="1000" placeholder type="text">
+            </div>
+            <div class="element">
+                <button class="btn" id="post">
+                    <div class="button-container" id="submit">
+                        送信
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/idea.js"></script>
 </body>
 </html>

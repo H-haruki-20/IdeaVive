@@ -56,7 +56,7 @@
     color: #5a6977;
     font-size: 18px;
     padding: 16px 18px;
-    width: 100%;
+    width: 80%;
     font-family: "Lato","Noto Sans JP",sans-serif;
 }
 
@@ -126,7 +126,7 @@
     line-height: 1;
     padding: 20px;
     transition: all .25s ease-out;
-    width: 100%;
+    width: 80%;
     text-decoration: none;
     border: none;
 }
@@ -136,6 +136,63 @@
 }
 
 #idea-generation{
+    display: block;
+}
+
+#init{
+    display: none;
+    position: fixed;
+	width: 50%;
+	z-index: 1100;
+	background: #fff;
+	padding: 2%;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%,-50%);
+	overflow-y: scroll;
+}
+
+
+.box-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(280px,1fr));
+    grid-gap: 16px;
+    gap: 16px;
+    margin-top: 32px;
+}
+
+.new-box {
+    border: 2px solid #40bcff;
+    color: #40bcff;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    font-weight: 700;
+    width: 100%;
+    border-radius: 16px;
+    height: 200px;
+    font-family: "Lato","Noto Sans JP",sans-serif;
+    appearance: none;
+    background: inherit;
+    text-decoration: none;
+}
+
+.plus{
+    margin-bottom: 8px;
+}
+
+#popup-background{
+    /* 画面全体を暗くする透過背景 */
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	background: rgba(0,0,0,.5);
+	top: 0;
+	left: 0;
+	z-index: 1000;
     display: none;
 }
 

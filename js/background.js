@@ -9,6 +9,8 @@ let apiKey = "";
 let theme = "";
 
 //連想配列を要素に持つ配列 (構造 : {original_idea : "..", id : ".."})
+let DATA = []; 
+let max_id = -1;
 let original_idea_pool = [];
 let original_idea = "";
 let target_id = "";
@@ -17,18 +19,29 @@ let isConcentrated = false;
 chrome.runtime.onMessage.addListener(data => {
   if(data.type === "init"){
     lang = data.options.language;
-    console.log(data.options.language);
     if(lang === "jp"){
       isJapanese = true;
     }else{
       isJapanese = false;
     }
     theme = data.options.theme;
-    console.log(theme);
+    id = data.options.id;
+    let room_init_data = {
+      "id" : id,
+      "lang" : lang,
+      "theme" : theme,
+      ideas : []
+    }
+    DATA.push(room_init_data);
+    max_id = id;
   }
+
+  //テーマごとにアイデアを格納したデータ DATAを作成し，保存しておく
   else if(data.type === "idea-post"){
-    var added_idea = {original_idea : data.options.idea, id : data.options.target_id}
-    original_idea_pool.push(added_idea);
+    let target_id = data.options.id;
+    var added_idea = {original_idea : data.options.idea, id : data.options.target_id};
+    DATA[target_id].ideas.push(added_idea);
+    console.log(DATA);
   }
   else if(data.type === "concentrated"){
     console.log("User concentrated");
@@ -41,10 +54,14 @@ chrome.runtime.onMessage.addListener(data => {
           message: "",
           iconUrl: "/img/icon.png",
           type: "basic",
-          eventTime: 4000
+          eventTime: 6000
         }
       }
+
       // どのアイデアをターゲットとするか選定
+      // idの決定　→ DATA[id].ideas
+      id_x = getRandomInt(max_id + 1);
+      original_idea_pool = DATA[id_x].ideas;
       t = original_idea_pool.length;
       x = getRandomInt(t);
       console.log(x);
@@ -52,8 +69,16 @@ chrome.runtime.onMessage.addListener(data => {
       target_id = original_idea_pool[x].id;
       console.log("選ばれたアイデア : " + original_idea);
 
+      theme = DATA[id_x].theme;
+      lang = DATA[id_x].lang;
+      if(lang === "jp"){
+        isJapanese = true;
+      }else{
+        isJapanese = false;
+      }
+
       // LLMによるアイデアとnotificationの実施
-      NewIdeaFromLLM(data);
+      NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x);
     }
   }
 })
@@ -213,7 +238,7 @@ function getRandomInt(max){
 
 // ========== LLMによってアイデア✖️キーワードで新しいアイデアを生成する ================= //
 
-async function NewIdeaFromLLM(data){
+async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x){
   messages = await MakePrompt(isJapanese,theme,keyword,original_idea);
   const IdeaCreatedByLLM = await fetch("https://api.openai.com/v1/chat/completions",{
     method: "POST",
@@ -247,6 +272,7 @@ async function NewIdeaFromLLM(data){
 
   // proposed idea made by LLM をindex.htmlに表示させる
   llm_json = {
+    id : id_x,
     new_idea : LLM_proposed_idea,
     target_id : target_id
   }

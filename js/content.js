@@ -15,8 +15,8 @@ const basicScrollCount = 4;
 
 
 
-if(!everCall){
-    document.addEventListener("scrollend", (event) => {
+document.addEventListener("scrollend", (event) => {
+    if(!everCall){
         let scrolledDate = Date.now();
         let readingTime = scrolledDate - startDate;
         scrollCount += 1;
@@ -26,6 +26,7 @@ if(!everCall){
         if(scrollCount > basicScrollCount){
             if(readingTime > basicTime){
                 isConcentrated = true;
+                everCall = true;
             }
         }
 
@@ -39,7 +40,6 @@ if(!everCall){
                 }
             })
             isConcentrated = false;
-            everCall = true;
         }
-    });
-}
+    }
+});
