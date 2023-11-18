@@ -1,6 +1,6 @@
 // ===== This is a script to determine if the user is really concentrating on reading the news =======//
 
-let apiKey = "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";
+let apiKey = "";
 
 console.log("YahooニュースもしくはBBC NEWSが読まれていることを検知");
 const startDate = Date.now();
