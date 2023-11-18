@@ -1,5 +1,8 @@
 let apiKey = "";
 
+// local storageをclearにする
+chrome.storage.local.clear();
+
 
 // ============ index.htmlとのやりとり ============================== //
 // 1. Get theme
@@ -16,7 +19,10 @@ let original_idea = "";
 let target_id = "";
 let isJapanese = true;
 let isConcentrated = false;
+let tt = [];
 chrome.runtime.onMessage.addListener(data => {
+
+  // ===== 言語とテーマ名とタブidを取得 ========= //
   if(data.type === "init"){
     lang = data.options.language;
     if(lang === "jp"){
@@ -36,50 +42,55 @@ chrome.runtime.onMessage.addListener(data => {
     max_id = id;
   }
 
-  //テーマごとにアイデアを格納したデータ DATAを作成し，保存しておく
+  // ===== テーマごとにアイデアを格納したデータ DATAを作成 =======//
   else if(data.type === "idea-post"){
     let target_id = data.options.id;
     var added_idea = {original_idea : data.options.idea, id : data.options.target_id};
     DATA[target_id].ideas.push(added_idea);
     console.log(DATA);
   }
+
+  // ==== 集中検知! notificationを出す！ =========== //
   else if(data.type === "concentrated"){
-    console.log("User concentrated");
-    isConcentrated = data.options.isConcentrated;
-    if(isConcentrated){
-      console.log("Users concentrated on reading this article.");
-      data = {
-        options: {
-          title: "新しいアイデアが発明されました！",
-          message: "",
-          iconUrl: "/img/icon.png",
-          type: "basic",
-          eventTime: 6000
-        }
+    keywords = JSON.parse(data.options.keywords);
+    keyword = keywords[0];
+    console.log("抽出されたキーワード : " + keyword.keyword);
+
+    data = {
+      options: {
+        title: "新しいアイデアが発明されました！",
+        message: "",
+        iconUrl: "/img/icon.png",
+        type: "basic",
+        eventTime: 6000
       }
-
-      // どのアイデアをターゲットとするか選定
-      // idの決定　→ DATA[id].ideas
-      id_x = getRandomInt(max_id + 1);
-      original_idea_pool = DATA[id_x].ideas;
-      t = original_idea_pool.length;
-      x = getRandomInt(t);
-      console.log(x);
-      original_idea = original_idea_pool[x].original_idea;
-      target_id = original_idea_pool[x].id;
-      console.log("選ばれたアイデア : " + original_idea);
-
-      theme = DATA[id_x].theme;
-      lang = DATA[id_x].lang;
-      if(lang === "jp"){
-        isJapanese = true;
-      }else{
-        isJapanese = false;
-      }
-
-      // LLMによるアイデアとnotificationの実施
-      NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x);
     }
+
+    // どのアイデアをターゲットとするか選定
+    // id_xは実験では固定する！ (今はランダム)
+    id_x = getRandomInt(max_id + 1);
+    original_idea_pool = DATA[id_x].ideas;
+    t = original_idea_pool.length;
+    x = getRandomInt(t);
+    console.log(x);
+    original_idea = original_idea_pool[x].original_idea;
+    target_id = original_idea_pool[x].id;
+    console.log("選ばれたアイデア : " + original_idea);
+
+    theme = DATA[id_x].theme;
+    lang = DATA[id_x].lang;
+    if(lang === "jp"){
+      isJapanese = true;
+    }else{
+      isJapanese = false;
+    }
+
+    console.log(theme);
+    console.log(target_id);
+    console.log(id_x);
+
+    // LLMによるアイデアとnotificationの実施
+    NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x);
   }
 })
 
@@ -91,7 +102,7 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
       {role: "system", content: `
       あなたは優秀な発明家でユーザーを助けます．
       ユーザーの興味を引き出すアイデアを提示することが目標です．
-      あなたの仕事内容を指示します．まず以下でユーザーが設定したテーマとそれに関するユーザーのアイデア，さらにユーザーが今読んでいるニュースのキーワードが与えられます．
+      あなたの仕事内容を指示します．まず以下でユーザーが設定したテーマとそれに関するユーザーのアイデア，さらにユーザーが今読んでいるニュースのキーワードとそれに関する情報が与えられます．
 
       #テーマ
       ${theme}
@@ -99,8 +110,9 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
       #ユーザーのアイデア
       ${original_idea}
 
-      #キーワード
-      ${keyword}
+      #キーワードとその情報
+      ${keyword.keyword}
+      ${keyword.info}
 
       そこでユーザーのアイデアとキーワードを組み合わせた新たなアイデアの案を一つ生成してください．制約条件は以下の通りです．
 
@@ -118,17 +130,18 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
       以下に例を示します．出力方法の参考にしてください．
 
       #テーマ
-      「面白い本の内容について」
+      「スポーツ教育の地理的・経済的なアクセスの不均等性の問題」
 
       #ユーザーのアイデア
-      「女子高生が主人公として出てくるストーリー」
+      「VRによってコーチの指導を場所に縛られず受けられるようにする」
 
-      #キーワード
-      「ドラッカーの問い「あなたは何者か」にどう答えるか」
+      #キーワードとその情報
+      「大谷翔平」
+      MLBのエンゼルス所属、投打の二刀流選手。異例の才能と成績で注目を浴びる。
 
       => 生成する内容
-      「もしドラ」
-      もし高校野球の女子マネージャーがドラッカーの『マネジメント』を読んだらどう活かせるのか
+      「大谷翔平の野球教室VR」
+      VR上で大谷翔平のバッティングおよびピッチングのモーションを再現し，ユーザーがそれを体験できるようにすることで練習できる．
 
       `
     }
@@ -192,8 +205,6 @@ function getJapaneseTab(tabId) {
     if(lastUrl != tab.url || lastTitle != tab.title)
       if(yahoo_news_pattern.test(tab.url)){
         console.log(tab.title);
-        // extracting keyword from yahoo news's title
-        keyword = tab.title;
       }
   });
 }
@@ -204,8 +215,6 @@ function getEnglishTab(tabId){
     if(lastUrl != tab.url || lastTitle != tab.title)
       if(bbc_news_pattern.test(tab.url)){
         console.log(tab.title);
-        // extracting keyword from yahoo news's title
-        keyword = tab.title;
       }
   }); 
 }
@@ -245,9 +254,11 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
+      // CORSエラーが出ないように
+      "Access-Control-Allow-Origin": "*",
     },
     body: JSON.stringify({
-      model: "gpt-3.5-turbo-0613",
+      model: "gpt-4",
       messages: messages,
       max_tokens: 256,
       temperature: 0.9,
@@ -271,11 +282,16 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
   await chrome.notifications.create("",data.options);
 
   // proposed idea made by LLM をindex.htmlに表示させる
+  tt.push(id_x);
   llm_json = {
-    id : id_x,
+    id : tt,
     new_idea : LLM_proposed_idea,
     target_id : target_id
   }
+  console.log("保存するデータ");
+  console.log(llm_json);
+  
+  // 生成されたアイデアをlocal storageに保存
   chrome.storage.local.set(llm_json).then(() => {
     console.log("storageに保存完了");
   });

@@ -68,14 +68,21 @@ function post_clicked(){
 }
 
 
-
+let iid;
+let array = [];
 // get new ideas made by llm from local storage
 chrome.storage.onChanged.addListener(function(changes,namespace) {
   console.log("call onchanged");
   if(namespace === "local"){
     if(changes.new_idea){
-      console.log("detect change");
-      if(id === changes.id_x.newValue){
+      array = changes.id.newValue;
+      iid = array[array.length - 1];
+      console.log("=============");
+      console.log(changes.new_idea.newValue);
+      console.log(iid);
+      console.log(changes.target_id.newValue);
+      console.log(iid - id);
+      if(iid-id === 0){
         display(changes.target_id.newValue,changes.new_idea.newValue);
       }
     }
