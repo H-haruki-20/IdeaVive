@@ -1,14 +1,27 @@
-let apiKey = "";
+// import OPENAI API KEY as apiKey
+try{
+  importScripts("./env.js")
+}catch(error){
+  console.log("OPENAI APIKEY is not defined! : " + error);
+}
+
+console.log("======= Start IdeaVive ========");
+console.log(apiKey);
 
 // local storageをclearにする
 chrome.storage.local.clear();
 
+// ***** 実験用 : 順番は変更すること ****** //
+const proposed_method = 0;
+const controlled_method = 1;
+const none_method = 2;
 
-// ============ index.htmlとのやりとり ============================== //
-// 1. Get theme
-// 2. Get original idea if exsisted
-// 3. Set language : Japanese or English
-// 4. Prepare Japanese or English Prompt
+// 0 ~ proposed_or_controlled => proposed
+// proposed_or_controlled ~ 9 => controlled
+const PROPOSED_OR_CONTROLLED = 5;
+
+
+// ============ ここから本体部分 ============================== //
 let theme = "";
 
 //連想配列を要素に持つ配列 (構造 : {original_idea : "..", id : ".."})
@@ -20,9 +33,11 @@ let target_id = "";
 let isJapanese = true;
 let isConcentrated = false;
 let tt = [];
+let tab_ids = [];
+let p = -1;
 chrome.runtime.onMessage.addListener(data => {
 
-  // ===== 言語とテーマ名とタブidを取得 ========= //
+  // ===== 言語とテーマ名とタブid(0,1,2)を取得 ========= //
   if(data.type === "init"){
     lang = data.options.language;
     if(lang === "jp"){
@@ -40,57 +55,86 @@ chrome.runtime.onMessage.addListener(data => {
     }
     DATA.push(room_init_data);
     max_id = id;
+
+    // tab-id関連
+    let getTabId = data.options.tab_id;
+    tab_ids.push(getTabId);
+    console.log(tab_ids);
+
   }
 
   // ===== テーマごとにアイデアを格納したデータ DATAを作成 =======//
   else if(data.type === "idea-post"){
     let target_id = data.options.id;
-    var added_idea = {original_idea : data.options.idea, id : data.options.target_id};
-    DATA[target_id].ideas.push(added_idea);
+    var added_idea = {
+      original_idea : data.options.idea,
+      id : data.options.target_id,
+      proposed_ideas : [],
+    };
+    try{
+      DATA[target_id].ideas.push(added_idea);
+    }catch(error){
+      console.log("データが作成できてないよエラー : " + error );
+      location.reload();
+    }
     console.log(DATA);
   }
 
   // ==== 集中検知! notificationを出す！ =========== //
   else if(data.type === "concentrated"){
-    keywords = JSON.parse(data.options.keywords);
-    keyword = keywords[0];
-    console.log("抽出されたキーワード : " + keyword.keyword);
 
-    data = {
-      options: {
-        title: "新しいアイデアが発明されました！",
-        message: "",
-        iconUrl: "/img/icon.png",
-        type: "basic",
-        eventTime: 6000
+    // proposed or controlled
+    p = getRandomInt(10);
+    if(p >= PROPOSED_OR_CONTROLLED){
+      try{
+        keywords = JSON.parse(data.options.keywords);
+        keyword = keywords[0];
+      }catch(error){
+        console.log("キーワードがJSON形式じゃないよエラー : " + error);
+        keyword = {
+          keyword : a,
+          info : a
+        } 
       }
-    }
-
-    // どのアイデアをターゲットとするか選定
-    // id_xは実験では固定する！ (今はランダム)
-    id_x = getRandomInt(max_id + 1);
-    original_idea_pool = DATA[id_x].ideas;
-    t = original_idea_pool.length;
-    x = getRandomInt(t);
-    console.log(x);
-    original_idea = original_idea_pool[x].original_idea;
-    target_id = original_idea_pool[x].id;
-    console.log("選ばれたアイデア : " + original_idea);
-
-    theme = DATA[id_x].theme;
-    lang = DATA[id_x].lang;
-    if(lang === "jp"){
-      isJapanese = true;
+      console.log("抽出されたキーワード : " + keyword.keyword);
+  
+      data = {
+        options: {
+          title: "新しいアイデアが発明されました！",
+          message: "",
+          iconUrl: "/img/icon.png",
+          type: "basic",
+          eventTime: 5000
+        }
+      }
+  
+      // どのアイデアをターゲットとするか選定
+      // id_xは実験では固定する！
+      id_x = proposed_method;
+      original_idea_pool = DATA[id_x].ideas;
+      t = original_idea_pool.length;
+      x = getRandomInt(t);
+      original_idea = original_idea_pool[x].original_idea;
+      target_id = original_idea_pool[x].id;
+      console.log("選ばれたアイデア : " + original_idea);
+  
+      theme = DATA[id_x].theme;
+      lang = DATA[id_x].lang;
+      if(lang === "jp"){
+        isJapanese = true;
+      }else{
+        isJapanese = false;
+      }
+  
+      console.log(theme);
+      console.log(target_id);
+      console.log(id_x);
+  
+      // LLMによるアイデアとnotificationの実施
+      NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x,keyword);
     }else{
-      isJapanese = false;
+      callControlledMethod();
     }
-
-    console.log(theme);
-    console.log(target_id);
-    console.log(id_x);
-
-    // LLMによるアイデアとnotificationの実施
-    NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x);
   }
 })
 
@@ -120,23 +164,24 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
       - 必ず一つのアイデアのみを生成すること
       - 生成したアイデアは以下の構成をとること
       - テーマに沿う内容にすること．特に誰がターゲットとなっていてその問題点は何かをできる限り挙げ，どれかを解決できるように考えること．
+      - キーワードの情報は参考程度に用いても構いません
       
       #生成するアイデアの構成
       「アイデアのタイトル名」
-      その詳しい内容，もしくは発想に至った流れを説明
+      その詳しい内容を説明
       - アイデアのタイトル名は15字以下
       - その説明は全体で60字以下
 
       以下に例を示します．出力方法の参考にしてください．
 
       #テーマ
-      「スポーツ教育の地理的・経済的なアクセスの不均等性の問題」
+      スポーツ教育の問題
 
       #ユーザーのアイデア
-      「VRによってコーチの指導を場所に縛られず受けられるようにする」
+      VRによってコーチの指導を場所に縛られず受けられるようにする
 
       #キーワードとその情報
-      「大谷翔平」
+      大谷翔平
       MLBのエンゼルス所属、投打の二刀流選手。異例の才能と成績で注目を浴びる。
 
       => 生成する内容
@@ -193,11 +238,13 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
     ];
 
   }
+  console.log(messages);
   return messages
 }
 
-// ============ タブの読み取りと他作業の検知 (タイミング) ============================== //
+// ============ タブの読み取り ============================== //
 let activeTabId, lastUrl, lastTitle;
+let a = "";
 
 function getJapaneseTab(tabId) {
   const yahoo_news_pattern = /^https?:\/\/news\.yahoo\.co\.jp\/[\w/:%#\$&\?\(\)~\.=\+\-]+$/
@@ -205,6 +252,7 @@ function getJapaneseTab(tabId) {
     if(lastUrl != tab.url || lastTitle != tab.title)
       if(yahoo_news_pattern.test(tab.url)){
         console.log(tab.title);
+        a = tab.title;
       }
   });
 }
@@ -247,7 +295,7 @@ function getRandomInt(max){
 
 // ========== LLMによってアイデア✖️キーワードで新しいアイデアを生成する ================= //
 
-async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x){
+async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x,keyword){
   messages = await MakePrompt(isJapanese,theme,keyword,original_idea);
   const IdeaCreatedByLLM = await fetch("https://api.openai.com/v1/chat/completions",{
     method: "POST",
@@ -258,7 +306,7 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
       "Access-Control-Allow-Origin": "*",
     },
     body: JSON.stringify({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo-1106",
       messages: messages,
       max_tokens: 256,
       temperature: 0.9,
@@ -290,6 +338,12 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
   }
   console.log("保存するデータ");
   console.log(llm_json);
+
+  // 生成されたアイデアをDATAに保存
+  DATA[id_x].ideas[x].proposed_ideas.push({
+    keyword : keyword,
+    proposed_idea : LLM_proposed_idea
+  })
   
   // 生成されたアイデアをlocal storageに保存
   chrome.storage.local.set(llm_json).then(() => {
@@ -298,18 +352,26 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
 
 }
 
-// notificationを行う 
-chrome.runtime.onMessage.addListener(data => {
-  if (data.type === 'notification') {
-    console.log("notificationが呼び出されました");
-    NewIdeaFromLLM(data);
+// ===== controlled method ====== //
+function callControlledMethod(){
+  chrome.notifications.create("",{
+    title : "アイデアを考えてみよう！",
+    message : `「${DATA[controlled_method].theme}」について考えてみませんか`,
+    iconUrl : "/img/icon.png",
+    type : "basic",
+    eventTime : 3000
   }
-});
+  )
+}
 
 // =========== notificationを押したときの動作============//
 
 chrome.notifications.onClicked.addListener(function(notifId){
-  if(notifId === "idea"){
-    console.log("元のページに遷移");
+  if(p>=PROPOSED_OR_CONTROLLED){
+    tabId = tab_ids[proposed_method];
+  }else{
+    tabId = tab_ids[controlled_method];
   }
+  console.log(tabId);
+  chrome.tabs.update(tabId,{active:true});
 });

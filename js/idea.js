@@ -1,7 +1,4 @@
-// --------- IdeaVive本体のjavascript --------------- //
-// 目的1 : (仮)notificationを出すボタンの設置
-// 目的2 : ユーザーがテーマとアイデアを設定することができる
-// 目的3 : 日本語 (yahooニュース)と英語(BCCニュース)の選択ができる
+// ========== アイデア創出画面 ==============//
 
 console.log("Start IdeaVive!");
 
@@ -35,9 +32,9 @@ function getUniqueStr(myStrong){
   return new Date().getTime().toString(16)  + Math.floor(strong*Math.random()).toString(16)
  }
 
-// send ideas which user post
+
+// ============== ユーザーが提案したアイデアを表示する =============== //
 function post_clicked(){
-  // ideaをリスト形式で表示
   const ideaContent = document.createTextNode(idea.value);
   const room_cover = document.createElement("div");
   room_cover.className = "room_cover";
@@ -51,8 +48,7 @@ function post_clicked(){
   llm_info.id = getUniqueStr();
   room.appendChild(llm_info);
   room_cover.appendChild(room);
-  idea_room.appendChild(room_cover);
-
+  idea_room.appendChild(room_cover); 
   // backgroundに送信
   chrome.runtime.sendMessage("",
   {
@@ -66,6 +62,32 @@ function post_clicked(){
 
   idea.value = "";
 }
+
+// ====== ideaをリスト形式で表示 (暫定) ====== //
+function displayIdeaInList(){
+  const ideaContent = document.createTextNode(idea.value);
+  const room_cover = document.createElement("div");
+  room_cover.className = "room_cover";
+  const room = document.createElement("div");
+  room.className = "room";
+  const headline = document.createElement("h3");
+  headline.className = "room_title";
+  headline.appendChild(ideaContent);
+  room.appendChild(headline);
+  const llm_info = document.createElement("h3");
+  llm_info.id = getUniqueStr();
+  room.appendChild(llm_info);
+  room_cover.appendChild(room);
+  idea_room.appendChild(room_cover); 
+}
+
+// ========== ideaをGUIで表示したい！ ============= //
+// 11/19 未実装
+function displayIdea(){
+
+}
+
+
 
 
 let iid;

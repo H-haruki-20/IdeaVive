@@ -1,7 +1,5 @@
-// --------- IdeaVive本体のjavascript --------------- //
-// 目的1 : (仮)notificationを出すボタンの設置
-// 目的2 : ユーザーがテーマとアイデアを設定することができる
-// 目的3 : 日本語 (yahooニュース)と英語(BCCニュース)の選択ができる
+// --------- ROOM作成画面 --------------- //
+// テーマ / 言語情報 / タブidの管理
 
 console.log("Start IdeaVive!");
 
@@ -15,20 +13,26 @@ let room_display = document.getElementById("list");
 start_button.addEventListener("click",btn_clicked);
 
 let id = 0;
-function btn_clicked(){
-  chrome.runtime.sendMessage("",
-  {
-    type: "init",
-    options:{
-      language : lang.value,
-      theme : theme.value,
-      id : id
-    }
-  });
-
+async function btn_clicked(){
   url = `../html/idea.html?id=${id}&lang=${lang.value}&theme=${theme.value}`;
-  window.open(url, '_blank')
+  // window.open(url, '_blank');
+  let lan = lang.value;
+  let th = theme.value;
+  let iid = id;
+  await chrome.tabs.create({url : url},(tab)=>{
+    chrome.runtime.sendMessage("",
+    {
+      type: "init",
+      options:{
+        language : lan,
+        theme : th,
+        id : iid,
+        tab_id : tab.id,
+      }
+    });
+  });
   createNewButton(url,theme.value);
+  theme.value = "";
   id += 1;
 }
 
@@ -45,6 +49,9 @@ function createNewButton(targetURL,title){
   div.appendChild(new_box); 
   room_display.appendChild(div);
 }
+
+// === 暗い部分を押したときにポップアップをキャンセル ===== //
+// 11/18 未実装
 
 
 // ========= create new room ============== //

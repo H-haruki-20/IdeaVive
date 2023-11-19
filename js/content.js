@@ -1,6 +1,11 @@
 // ===== This is a script to determine if the user is really concentrating on reading the news =======//
-
-let apiKey = "";
+// import OPENAI API KEY as apiKey
+// これは無理でした．．
+try{
+    importScripts("./env.js");
+}catch(error){
+    console.log("OPENAI APIKEY is not defined!");
+}
 
 console.log("YahooニュースもしくはBBC NEWSが読まれていることを検知");
 const startDate = Date.now();
@@ -39,7 +44,7 @@ async function getKeywordFromNews(url){
         #制約条件
         - 人名や固有名詞などは含めても構いません
         - 助詞や助動詞など意味のないものは含めないでください．
-        - 各キーワードに関する情報は20字程度としてください
+        - 各キーワードに関する情報は20字以下としてください
         - 必ず以下に示すリスト形式で出力してください
         - リストの各要素はkeywordとinfoをkeyとするJSON形式にしてください
 
