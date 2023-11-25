@@ -3,6 +3,7 @@ try{
   importScripts("./env.js")
 }catch(error){
   console.log("OPENAI APIKEY is not defined! : " + error);
+  window.alert("APIキーをセットできていません! (background)");
 }
 
 console.log("======= Start IdeaVive ========");
@@ -16,9 +17,12 @@ const proposed_method = 0;
 const controlled_method = 1;
 const none_method = 2;
 
-// 0 ~ proposed_or_controlled => proposed
-// proposed_or_controlled ~ 9 => controlled
-const PROPOSED_OR_CONTROLLED = 5;
+/**
+ * 提案手法と制御手法のどちらを動作させるかの閾値 (0~9)
+ * 0 ~ proposed_or_controlled => controlled
+ * proposed_or_controlled ~ 9 => proposed
+ */
+const PROPOSED_OR_CONTROLLED = 4;
 
 
 // ============ ここから本体部分 ============================== //
@@ -33,6 +37,7 @@ let target_id = "";
 let isJapanese = true;
 let isConcentrated = false;
 let tt = [];
+let llm_ids = [];
 let tab_ids = [];
 let p = -1;
 chrome.runtime.onMessage.addListener(data => {
@@ -75,7 +80,7 @@ chrome.runtime.onMessage.addListener(data => {
       DATA[target_id].ideas.push(added_idea);
     }catch(error){
       console.log("データが作成できてないよエラー : " + error );
-      location.reload();
+      window.alert("データの受け取りエラーが生じました！\n実験をやり直して下さい");
     }
     console.log(DATA);
   }
@@ -138,7 +143,14 @@ chrome.runtime.onMessage.addListener(data => {
   }
 })
 
-// 日本語用のプロンプト + English用のプロンプトを用意
+/**
+ * プロンプトの作成
+ * @param {boolean} isJapanese 
+ * @param {string} theme 
+ * @param {string[]} keyword 
+ * @param {string} original_idea 
+ * @returns 
+ */
 function MakePrompt(isJapanese,theme,keyword,original_idea){
   if(isJapanese){
     // 日本語用のプロンプト
@@ -285,16 +297,25 @@ chrome.tabs.onUpdated.addListener(function(tabId) {
   }
 });
 
-// 0 ~ MAX-1までの乱数生成
+/**
+ * 0からmax-1までの乱数を生成
+ * @param {number} max 
+ * @returns 
+ */
 function getRandomInt(max){
   return Math.floor(Math.random() * max);
 }
 
-
-
-
-// ========== LLMによってアイデア✖️キーワードで新しいアイデアを生成する ================= //
-
+/**
+ * 提案手法 : LLMにより生成されたアイデアを通知する
+ * @param {json} data 
+ * @param {boolean} isJapanese 
+ * @param {string} theme 
+ * @param {string} original_idea 
+ * @param {number} target_id 
+ * @param {number} id_x 
+ * @param {string} keyword 
+ */
 async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x,keyword){
   messages = await MakePrompt(isJapanese,theme,keyword,original_idea);
   const IdeaCreatedByLLM = await fetch("https://api.openai.com/v1/chat/completions",{
@@ -306,7 +327,7 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
       "Access-Control-Allow-Origin": "*",
     },
     body: JSON.stringify({
-      model: "gpt-3.5-turbo-1106",
+      model: "gpt-3.5-turbo-1106", //gpt4
       messages: messages,
       max_tokens: 256,
       temperature: 0.9,
@@ -315,6 +336,7 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
   if (!IdeaCreatedByLLM.ok) {
     const errorData = await IdeaCreatedByLLM.json();
     console.error(`Error: ${errorData.error.message}`);
+    window.alert("アイデア生成フェーズにおいてAPIエラー");
     throw new Error(`API request failed: ${IdeaCreatedByLLM.status}`);
   }
 
@@ -331,10 +353,11 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
 
   // proposed idea made by LLM をindex.htmlに表示させる
   tt.push(id_x);
+  llm_ids.push(target_id);
   llm_json = {
     id : tt,
     new_idea : LLM_proposed_idea,
-    target_id : target_id
+    target_id : llm_ids
   }
   console.log("保存するデータ");
   console.log(llm_json);
@@ -352,7 +375,9 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
 
 }
 
-// ===== controlled method ====== //
+/**
+ * 制御用の動作
+ */
 function callControlledMethod(){
   chrome.notifications.create("",{
     title : "アイデアを考えてみよう！",
@@ -372,6 +397,6 @@ chrome.notifications.onClicked.addListener(function(notifId){
   }else{
     tabId = tab_ids[controlled_method];
   }
-  console.log(tabId);
+  console.log(`tabIdは${tabId}です`);
   chrome.tabs.update(tabId,{active:true});
 });

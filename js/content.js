@@ -5,6 +5,7 @@ try{
     importScripts("./env.js");
 }catch(error){
     console.log("OPENAI APIKEY is not defined!");
+    apiKey = "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";
 }
 
 console.log("YahooニュースもしくはBBC NEWSが読まれていることを検知");
@@ -14,8 +15,8 @@ let scrollCount = 0;
 let isConcentrated = false;
 let everCall = false;
 
-// 集中検知 : 10sec以上 and 5スクロール以上
-const basicTime = 10000;
+// 集中検知 : 8sec以上 and 3スクロール以上
+const basicTime = 8000;
 const basicScrollCount = 4;
 
 // ================ extract keyword from yahoo news ================ //
@@ -23,9 +24,19 @@ let extractedKeywords = [];
 
 let nowURL = location.href;
 
+/**
+ * Yahoo!ニュースの記事からキーワードを3つ取り出す
+ * @param {string} url 
+ * @returns 
+ */
 async function getKeywordFromNews(url){
-    let newsTextContent = document.getElementsByClassName("highLightSearchTarget")[0].innerText;
-    console.log(newsTextContent);
+    let newsTextContent = "";
+    try{
+        newsTextContent = document.getElementsByClassName("highLightSearchTarget")[0].innerText;
+        console.log(newsTextContent);
+    }catch(e){
+        window.alert("ニュースのテキストを取得出来てません");
+    }
 
     //テキストからキーワードを抽出するプロンプト
     messages = [
@@ -102,6 +113,7 @@ async function getKeywordFromNews(url){
   if (!extractKeywordByLLM.ok) {
     const errorData = await extractKeywordByLLM.json();
     console.error(`Error: ${errorData.error.message}`);
+    window.alert("キーワード抽出フェーズにおいてAPIエラー");
     throw new Error(`API request failed: ${extractKeywordByLLM.status}`);
   }
 
