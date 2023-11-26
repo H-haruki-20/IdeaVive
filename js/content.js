@@ -5,7 +5,7 @@ try{
     importScripts("./env.js");
 }catch(error){
     console.log("OPENAI APIKEY is not defined!");
-    apiKey = "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";
+    apiKey = "";
 }
 
 console.log("YahooニュースもしくはBBC NEWSが読まれていることを検知");
