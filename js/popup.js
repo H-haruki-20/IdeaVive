@@ -5,3 +5,12 @@ button.addEventListener("click", () => {
     console.log("click");
     chrome.tabs.create({url :"html/index.html"});
 })
+
+const stop_button = document.getElementById("stop-ideavive");
+stop_button.addEventListener("click",()=>{
+    chrome.runtime.sendMessage("",
+    {
+        type : "stop"
+    });
+    chrome.tabs.create({url :"html/thanks.html"});
+})

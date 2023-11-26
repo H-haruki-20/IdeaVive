@@ -116,9 +116,6 @@ function displayIdeaInPanel(){
   });
 }
 
-
-
-
 let iid;
 let array = [];
 // get new ideas made by llm from local storage
@@ -176,6 +173,4 @@ function addNewIdeaInGUI(newId){
   target.id = "hahaha";
 }
 
-/**
- * ゴミ箱ボタンを押したときそのアイデアを削除
- */
+

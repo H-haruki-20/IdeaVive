@@ -3,7 +3,6 @@ try{
   importScripts("./env.js")
 }catch(error){
   console.log("OPENAI APIKEY is not defined! : " + error);
-  window.alert("APIキーをセットできていません! (background)");
 }
 
 console.log("======= Start IdeaVive ========");
@@ -56,15 +55,15 @@ chrome.runtime.onMessage.addListener(data => {
       "id" : id,
       "lang" : lang,
       "theme" : theme,
-      ideas : []
+      "ideas" : []
     }
     DATA.push(room_init_data);
+    console.log(DATA);
     max_id = id;
 
     // tab-id関連
     let getTabId = data.options.tab_id;
     tab_ids.push(getTabId);
-    console.log(tab_ids);
 
   }
 
@@ -80,7 +79,14 @@ chrome.runtime.onMessage.addListener(data => {
       DATA[target_id].ideas.push(added_idea);
     }catch(error){
       console.log("データが作成できてないよエラー : " + error );
-      window.alert("データの受け取りエラーが生じました！\n実験をやり直して下さい");
+      chrome.tabs.update(errorTabId[0],{active:true});
+      chrome.scripting.executeScript({
+
+        target: { tabId: errorTabId[0] },
+      
+        func: () => window.alert("データの生成でエラーが生じました！\n実験をやり直してください")
+      
+      });
     }
     console.log(DATA);
   }
@@ -116,7 +122,17 @@ chrome.runtime.onMessage.addListener(data => {
       // どのアイデアをターゲットとするか選定
       // id_xは実験では固定する！
       id_x = proposed_method;
-      original_idea_pool = DATA[id_x].ideas;
+      try{
+        original_idea_pool = DATA[id_x].ideas;
+      }catch(e){
+        chrome.scripting.executeScript({
+
+          target: { tabId: errorTabId[0] },
+        
+          func: () => window.alert("データの生成でエラーが生じました！\n実験をやり直してください")
+        
+        }); 
+      }
       t = original_idea_pool.length;
       x = getRandomInt(t);
       original_idea = original_idea_pool[x].original_idea;
@@ -138,8 +154,27 @@ chrome.runtime.onMessage.addListener(data => {
       // LLMによるアイデアとnotificationの実施
       NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x,keyword);
     }else{
-      callControlledMethod();
+      try{
+        callControlledMethod();
+      }catch(e){
+        chrome.scripting.executeScript({
+
+          target: { tabId: errorTabId[0] },
+        
+          func: () => window.alert("アイデア創出タスクを全て終えていません！")
+        
+        });
+      }
     }
+  }
+  
+  // 実験終了
+  else if(data.type === "stop"){
+    console.log("実験終了!");
+    console.log(DATA);
+    console.log(`提案手法の通知のタップ回数は${proposedNotificationTapCount}`);
+    console.log(`制御手法の通知のタップ回数は${controlledNotificationTapCount}`);
+
   }
 })
 
@@ -175,8 +210,9 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
       #制約条件
       - 必ず一つのアイデアのみを生成すること
       - 生成したアイデアは以下の構成をとること
-      - テーマに沿う内容にすること．特に誰がターゲットとなっていてその問題点は何かをできる限り挙げ，どれかを解決できるように考えること．
-      - キーワードの情報は参考程度に用いても構いません
+      - テーマに沿う内容にすること．特に誰がターゲットとなっていてその問題点は何かをできる限り挙げ，それらを解決できるように考えること．
+      - キーワードの情報も考慮してください．
+      - キーワードはできるだけそのまま含めるようにしてください．
       
       #生成するアイデアの構成
       「アイデアのタイトル名」
@@ -257,6 +293,7 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
 // ============ タブの読み取り ============================== //
 let activeTabId, lastUrl, lastTitle;
 let a = "";
+let errorTabId = [];
 
 function getJapaneseTab(tabId) {
   const yahoo_news_pattern = /^https?:\/\/news\.yahoo\.co\.jp\/[\w/:%#\$&\?\(\)~\.=\+\-]+$/
@@ -280,6 +317,8 @@ function getEnglishTab(tabId){
 }
 
 chrome.tabs.onActivated.addListener(function(activeInfo) {
+  errorTabId.push(activeInfo.tabId);
+  
   if(isJapanese){
     getJapaneseTab(activeTabId = activeInfo.tabId);
   }else{
@@ -391,11 +430,15 @@ function callControlledMethod(){
 
 // =========== notificationを押したときの動作============//
 
+let proposedNotificationTapCount = 0;
+let controlledNotificationTapCount = 0;
 chrome.notifications.onClicked.addListener(function(notifId){
   if(p>=PROPOSED_OR_CONTROLLED){
     tabId = tab_ids[proposed_method];
+    proposedNotificationTapCount += 1;
   }else{
     tabId = tab_ids[controlled_method];
+    controlledNotificationTapCount += 1;
   }
   console.log(`tabIdは${tabId}です`);
   chrome.tabs.update(tabId,{active:true});

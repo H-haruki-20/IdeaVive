@@ -297,3 +297,15 @@
         display: inline;
     }
 }
+
+.thanks{
+    align-items: centert;
+    font-size: 40px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+}
+
+.question{
+    align-items: centert;
+    font-size: 15px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;  
+}
