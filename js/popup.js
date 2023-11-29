@@ -3,6 +3,10 @@
 const button = document.getElementById("start-ideavive");
 button.addEventListener("click", () => {
     console.log("click");
+    chrome.runtime.sendMessage("",
+    {
+        type : "start"
+    });
     chrome.tabs.create({url :"html/index.html"});
 })
 

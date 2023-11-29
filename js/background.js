@@ -5,16 +5,12 @@ try{
   console.log("OPENAI APIKEY is not defined! : " + error);
 }
 
-console.log("======= Start IdeaVive ========");
-console.log(apiKey);
-
-// local storageをclearにする
-chrome.storage.local.clear();
 
 // ***** 実験用 : 順番は変更すること ****** //
 const proposed_method = 0;
 const controlled_method = 1;
 const none_method = 2;
+// ************* 要変更 ************* //
 
 /**
  * 提案手法と制御手法のどちらを動作させるかの閾値 (0~9)
@@ -39,10 +35,28 @@ let tt = [];
 let llm_ids = [];
 let tab_ids = [];
 let p = -1;
+let isPlayed = false;
 chrome.runtime.onMessage.addListener(data => {
+  // ===== IdeaVive Start === //
+  if(data.type === "start"){
+    console.log("======= Start IdeaVive ========");
+    // 初期化作業
+    chrome.storage.local.clear();
+    DATA = [];
+    original_idea_pool = [];
+    original_idea = "";
+    target_id = "";
+    isConcentrated = false;
+    tt = [];
+    llm_ids = [];
+    tab_ids = [];
+    proposedNotificationTapCount = 0;
+    controlledNotificationTapCount = 0;
+    isPlayed = true;
+  }
 
   // ===== 言語とテーマ名とタブid(0,1,2)を取得 ========= //
-  if(data.type === "init"){
+  else if(data.type === "init"){
     lang = data.options.language;
     if(lang === "jp"){
       isJapanese = true;
@@ -79,20 +93,22 @@ chrome.runtime.onMessage.addListener(data => {
       DATA[target_id].ideas.push(added_idea);
     }catch(error){
       console.log("データが作成できてないよエラー : " + error );
-      chrome.tabs.update(errorTabId[0],{active:true});
-      chrome.scripting.executeScript({
+      // chrome.tabs.update(errorTabId[0],{active:true});
+      // chrome.scripting.executeScript({
 
-        target: { tabId: errorTabId[0] },
+      //   target: { tabId: errorTabId[0] },
       
-        func: () => window.alert("データの生成でエラーが生じました！\n実験をやり直してください")
+      //   func: () => window.alert("データの生成でエラーが生じました！\n実験をやり直してください")
       
-      });
+      // });
+      chrome.tabs.create({url:`html/error.html?m=${error}`});
     }
     console.log(DATA);
   }
 
   // ==== 集中検知! notificationを出す！ =========== //
   else if(data.type === "concentrated"){
+    // DATAが空のときにエラーを出す
 
     // proposed or controlled
     p = getRandomInt(10);
@@ -105,7 +121,7 @@ chrome.runtime.onMessage.addListener(data => {
         keyword = {
           keyword : a,
           info : a
-        } 
+        }; 
       }
       console.log("抽出されたキーワード : " + keyword.keyword);
   
@@ -125,13 +141,13 @@ chrome.runtime.onMessage.addListener(data => {
       try{
         original_idea_pool = DATA[id_x].ideas;
       }catch(e){
-        chrome.scripting.executeScript({
+        // chrome.scripting.executeScript({
 
-          target: { tabId: errorTabId[0] },
+          // target: { tabId: errorTabId[0] },
         
-          func: () => window.alert("データの生成でエラーが生じました！\n実験をやり直してください")
-        
-        }); 
+          // func: () => window.alert("データの生成でエラーが生じました！\n実験をやり直してください")
+        // });
+        chrome.tabs.create({url:`html/error.html?m=${e}`}); 
       }
       t = original_idea_pool.length;
       x = getRandomInt(t);
@@ -157,13 +173,14 @@ chrome.runtime.onMessage.addListener(data => {
       try{
         callControlledMethod();
       }catch(e){
-        chrome.scripting.executeScript({
+        // chrome.scripting.executeScript({
 
-          target: { tabId: errorTabId[0] },
+        //   target: { tabId: errorTabId[0] },
         
-          func: () => window.alert("アイデア創出タスクを全て終えていません！")
+        //   func: () => window.alert("アイデア創出タスクを全て終えていません！")
         
-        });
+        // });
+        chrome.tabs.create({url:`html/error.html?m=${e}`});
       }
     }
   }
@@ -174,7 +191,7 @@ chrome.runtime.onMessage.addListener(data => {
     console.log(DATA);
     console.log(`提案手法の通知のタップ回数は${proposedNotificationTapCount}`);
     console.log(`制御手法の通知のタップ回数は${controlledNotificationTapCount}`);
-
+    isPlayed = false;
   }
 })
 
@@ -316,25 +333,26 @@ function getEnglishTab(tabId){
   }); 
 }
 
-chrome.tabs.onActivated.addListener(function(activeInfo) {
-  errorTabId.push(activeInfo.tabId);
-  
-  if(isJapanese){
-    getJapaneseTab(activeTabId = activeInfo.tabId);
-  }else{
-    getEnglishTab(activeTabId = activeInfo.tabId);
-  }
-});
-
-chrome.tabs.onUpdated.addListener(function(tabId) {
-  if(activeTabId == tabId) {
+if(isPlayed){
+  chrome.tabs.onActivated.addListener(function(activeInfo) {
+    errorTabId.push(activeInfo.tabId);
     if(isJapanese){
-      getJapaneseTab(tabId);
+      getJapaneseTab(activeTabId = activeInfo.tabId);
     }else{
-      getEnglishTab(tabId);
+      getEnglishTab(activeTabId = activeInfo.tabId);
     }
-  }
-});
+  });
+  
+  chrome.tabs.onUpdated.addListener(function(tabId) {
+    if(activeTabId == tabId) {
+      if(isJapanese){
+        getJapaneseTab(tabId);
+      }else{
+        getEnglishTab(tabId);
+      }
+    }
+  });
+}
 
 /**
  * 0からmax-1までの乱数を生成
@@ -375,7 +393,7 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
   if (!IdeaCreatedByLLM.ok) {
     const errorData = await IdeaCreatedByLLM.json();
     console.error(`Error: ${errorData.error.message}`);
-    window.alert("アイデア生成フェーズにおいてAPIエラー");
+    chrome.tabs.create({url:`html/error.html?m=${errorData.error.message}`});
     throw new Error(`API request failed: ${IdeaCreatedByLLM.status}`);
   }
 

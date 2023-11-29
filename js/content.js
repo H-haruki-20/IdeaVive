@@ -4,11 +4,10 @@
 try{
     importScripts("./env.js");
 }catch(error){
-    console.log("OPENAI APIKEY is not defined!");
-    apiKey = "";
+    console.log("**Get Context and extract keyword!**");
+    apiKey = "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";
 }
 
-console.log("YahooニュースもしくはBBC NEWSが読まれていることを検知");
 const startDate = Date.now();
 let scrollCount = 0;
 // LLMへの問い合わせを行うかどうか
@@ -30,12 +29,16 @@ let nowURL = location.href;
  * @returns 
  */
 async function getKeywordFromNews(url){
-    let newsTextContent = "";
+    let mainTextContent = "";
     try{
-        newsTextContent = document.getElementsByClassName("highLightSearchTarget")[0].innerText;
-        console.log(newsTextContent);
+        // yahooニュースの場合
+        mainTextContent = document.getElementsByClassName("highLightSearchTarget")[0].innerText;
+        console.log(mainTextContent);
     }catch(e){
-        window.alert("ニュースのテキストを取得出来てません");
+        // window.alert("ニュースのテキストを取得出来てません");
+        // それ以外の場合
+        mainTextContent = document.body.innerText;
+        console.log(mainTextContent);
     }
 
     //テキストからキーワードを抽出するプロンプト
@@ -47,7 +50,7 @@ async function getKeywordFromNews(url){
         まず以下でニュース記事のテキスト内容が与えられます．
 
         #ニュース記事のテキスト内容
-        ${newsTextContent}
+        ${mainTextContent}
 
         このテキストから重要かつ意味のあるキーワードを3つ抜き出してください
         さらに各キーワードに関する情報もつけてください．
@@ -107,13 +110,13 @@ async function getKeywordFromNews(url){
       model: "gpt-3.5-turbo-1106",
       messages: messages,
       max_tokens: 256,
-      temperature: 0.9,
+      temperature: 0.6,
     }),
   });
   if (!extractKeywordByLLM.ok) {
     const errorData = await extractKeywordByLLM.json();
     console.error(`Error: ${errorData.error.message}`);
-    window.alert("キーワード抽出フェーズにおいてAPIエラー");
+    chrome.tabs.create({url:"html/error.html"});
     throw new Error(`API request failed: ${extractKeywordByLLM.status}`);
   }
 

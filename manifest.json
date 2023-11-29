@@ -5,7 +5,8 @@
     {
       "matches": [
         "https://news.yahoo.co.jp/*",
-        "https://www.bbc.com/news/*"
+        "https://www.bbc.com/news/*",
+        "https://note.com/*"
       ],
       "js": [
         "js/content.js"
