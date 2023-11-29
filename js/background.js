@@ -17,7 +17,7 @@ const none_method = 2;
  * 0 ~ proposed_or_controlled => controlled
  * proposed_or_controlled ~ 9 => proposed
  */
-const PROPOSED_OR_CONTROLLED = 4;
+const PROPOSED_OR_CONTROLLED = 0;
 
 
 // ============ ここから本体部分 ============================== //

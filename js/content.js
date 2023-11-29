@@ -5,7 +5,7 @@ try{
     importScripts("./env.js");
 }catch(error){
     console.log("**Get Context and extract keyword!**");
-    apiKey = "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";
+    apiKey = "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";
 }
 
 const startDate = Date.now();

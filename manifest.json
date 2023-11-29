@@ -4,9 +4,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://news.yahoo.co.jp/*",
-        "https://www.bbc.com/news/*",
-        "https://note.com/*"
+        "<all_urls>"
       ],
       "js": [
         "js/content.js"

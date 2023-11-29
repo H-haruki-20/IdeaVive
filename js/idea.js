@@ -67,7 +67,7 @@ function displayIdeaInGUI(){
   const trash = document.createElement("img");
   trash.src = "../img/trash.png";
   trash.className = "tool_box";
-  trash.width = "0";
+  trash.width = "30";
   create_node_cover.appendChild(trash);
   div.appendChild(create_node_cover);
 
@@ -165,7 +165,7 @@ function addNewIdeaInGUI(newId){
   const trash = document.createElement("img");
   trash.src = "../img/trash.png";
   trash.className = "tool_box";
-  trash.width = "0";
+  trash.width = "30";
   create_node_cover.appendChild(trash);
   parent.appendChild(create_node_cover);
 
@@ -173,4 +173,12 @@ function addNewIdeaInGUI(newId){
   target.id = "hahaha";
 }
 
-
+/**
+ * 提案アイデアを削除する
+ */
+document.addEventListener('click', function(e) {
+  if (e.target.className === 'tool_box') {
+      console.log("click");
+      e.target.parentNode.remove();
+  }
+});
