@@ -5,17 +5,17 @@ try{
     importScripts("./env.js");
 }catch(error){
     console.log("**Get Context and extract keyword!**");
-    apiKey = "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";
+    apiKey = "YOUR API KEY";
 }
 
-const startDate = Date.now();
-let scrollCount = 0;
+let startDate = Date.now();
+let detectCount = 0;
 // LLMへの問い合わせを行うかどうか
 let isConcentrated = false;
 let everCall = false;
 
-// 集中検知 : 8sec以上 and 3スクロール以上
-const basicTime = 8000;
+// 集中検知 : そのサイトに20秒以上滞在しているかどうか
+let basicTime = 20000;
 const basicScrollCount = 4;
 
 // ================ extract keyword from yahoo news ================ //
@@ -35,7 +35,6 @@ async function getKeywordFromNews(url){
         mainTextContent = document.getElementsByClassName("highLightSearchTarget")[0].innerText;
         console.log(mainTextContent);
     }catch(e){
-        // window.alert("ニュースのテキストを取得出来てません");
         // それ以外の場合
         mainTextContent = document.body.innerText;
         console.log(mainTextContent);
@@ -61,6 +60,7 @@ async function getKeywordFromNews(url){
         - 各キーワードに関する情報は20字以下としてください
         - 必ず以下に示すリスト形式で出力してください
         - リストの各要素はkeywordとinfoをkeyとするJSON形式にしてください
+        - 英語の場合は英語で出力してください
 
         #出力形式
         [{
@@ -128,43 +128,76 @@ async function getKeywordFromNews(url){
 
 }
 
-// ============== 集中判定 ================ //
+/**
+ * ランダムな整数を返す
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
 
+/**
+ * 今の時刻を取得
+ */
+function getNowTime(){
+    return Date.now();
+}
 
+/**
+ * 確率の設定 (0~100)
+ */
+const probNum = 80;
+let num = getRandomInt(100);
 
+//basicTimeを変更 (numが0のときは10秒,80のときは30秒,81以上のときは通知なし)
+basicTime = 10000 + 20000 * num / probNum;
+console.log("基準時間は" + basicTime);
 
 // ============== 集中検知 + backgroundへ送信 =============== //
 document.addEventListener("scrollend", (event) => {
-    if(!everCall){
-        let scrolledDate = Date.now();
-        let readingTime = scrolledDate - startDate;
-        scrollCount += 1;
+    if(num <= probNum){
+        let readingTime = getNowTime();
+        readingTime -= startDate;
         console.log(readingTime);
 
         //集中検知
-        if(scrollCount > basicScrollCount){
-            if(readingTime > basicTime){
+        if(readingTime > basicTime){
+            if(detectCount%3 === 0){
                 isConcentrated = true;
-                everCall = true;
-            }
-        }
-
-        // キーワードを抽出してからbackgroundに通信
-        if (isConcentrated){
-            console.log("キーワードの抽出");
-            getKeywordFromNews(nowURL).then(value => {
-                console.log(value);
-
+                startDate = getNowTime();
+                //basicTimeを変更 (numが0のときは16秒,80のときは0秒増やす)
+                basicTime += 16000 * (probNum - num) / probNum;
+                console.log("キーワードの抽出");
+                getKeywordFromNews(nowURL).then(value => {
+                    console.log(value);
+    
+                    chrome.runtime.sendMessage("",{
+                        type: "concentrated",
+                        options: {
+                            isConcentrated : isConcentrated,
+                            // 内容とか入れたい
+                            keywords : value,
+                            detectCount : 0
+                        }
+                    })
+                    isConcentrated = false;
+                })
+            }else{
+                isConcentrated = true;
+                startDate = getNowTime();
+                //basicTimeを変更 (numが0のときは16秒,80のときは0秒増やす)
+                basicTime += 16000 * (probNum - num) / probNum;
                 chrome.runtime.sendMessage("",{
                     type: "concentrated",
                     options: {
                         isConcentrated : isConcentrated,
                         // 内容とか入れたい
-                        keywords : value
+                        keywords : extractedKeywords,
+                        detectCount : detectCount%3
                     }
                 })
                 isConcentrated = false;
-            })
+            }
+            detectCount++;
         }
     }
 });

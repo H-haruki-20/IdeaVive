@@ -10,7 +10,19 @@ let init = document.getElementById("init");
 let start_button = document.getElementById("start");
 let room_display = document.getElementById("list");
 
+/**
+ * ボタンを押したときの処理
+ */
 start_button.addEventListener("click",btn_clicked);
+
+/**
+ * エンターキーを押した時の処理
+ */
+theme.addEventListener("keydown",(event)=>{
+  if(event.keyCode === 13){
+    btn_clicked();
+  }
+});
 
 let id = 0;
 async function btn_clicked(){
@@ -20,7 +32,7 @@ async function btn_clicked(){
   let th = theme.value;
   let iid = id;
   await chrome.tabs.create({url : url},(tab)=>{
-    chrome.runtime.sendMessage("",
+    let initPromise = chrome.runtime.sendMessage("",
     {
       type: "init",
       options:{
@@ -30,12 +42,25 @@ async function btn_clicked(){
         tab_id : tab.id,
       }
     });
+
+    initPromise
+    .then((response)=>{
+      console.log("send init info to background!");
+    })
+    .catch((error)=>{
+      chrome.tabs.create({url:`html/error.html?m=${error}`});
+    })
   });
   createNewButton(url,theme.value);
   theme.value = "";
   id += 1;
 }
 
+/**
+ * アイデアごとのRoomを作成
+ * @param {String} targetURL 
+ * @param {String} title 
+ */
 function createNewButton(targetURL,title){
   init.style.display = "none";
   background.style.display = "none";

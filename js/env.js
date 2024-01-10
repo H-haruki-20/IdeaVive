@@ -1,1 +1,1 @@
-const apiKey = process.env.apiKey;
+const apiKey = "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";

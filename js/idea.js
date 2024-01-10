@@ -11,7 +11,20 @@ let theme_room = document.getElementById("theme");
 let instruction = document.getElementById("write-idea");
 let submit = document.getElementById("submit");
 
-post_button.addEventListener("click",post_clicked);
+/**
+ * ボタンクリック時の処理
+ */
+post_button.addEventListener("click",submit_idea);
+
+/**
+ * エンターキーを押したときの処理
+ */
+idea.addEventListener("keydown",(event)=>{
+  if(event.keyCode === 13){
+    submit_idea();
+  }
+});
+
 
 // テーマの表示と言語情報
 const searchParams = new URLSearchParams(window.location.search);
@@ -37,7 +50,7 @@ function getUniqueStr(myStrong){
 /**
  * ユーザーがアイデアを送信したときに呼び出される
  */
-function post_clicked(){
+function submit_idea(){
   displayIdeaInGUI();
   idea.value = "";
 }
@@ -74,7 +87,7 @@ function displayIdeaInGUI(){
   idea_room.appendChild(div);
 
   // backgroundに送信
-  chrome.runtime.sendMessage("",
+  let ideaPromise = chrome.runtime.sendMessage("",
   {
     type: "idea-post",
     options:{
@@ -83,6 +96,14 @@ function displayIdeaInGUI(){
       target_id : generatedIdea.id
     }
   });
+
+  ideaPromise
+  .then((response)=>{
+    console.log("send idea info to background!");
+  })
+  .catch((error)=>{
+    chrome.tabs.create({url:`html/error.html?m=${error}`});
+  })
 
 }
 
@@ -182,3 +203,7 @@ document.addEventListener('click', function(e) {
       e.target.parentNode.remove();
   }
 });
+
+/**
+ * ユーザーがこのページを閲覧している時間を計測する (Under construction)
+ */

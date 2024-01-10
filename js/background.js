@@ -7,17 +7,21 @@ try{
 
 
 // ***** 実験用 : 順番は変更すること ****** //
-const proposed_method = 0;
-const controlled_method = 1;
+let proposed_method = 0;
+let controlled_method = 0;
 const none_method = 2;
 // ************* 要変更 ************* //
+
+// ============ 定量データの収集用 ============================== //
+let numberOfProposedMethod = 0;
+let numberOfControlledMethod = 0;
 
 /**
  * 提案手法と制御手法のどちらを動作させるかの閾値 (0~9)
  * 0 ~ proposed_or_controlled => controlled
  * proposed_or_controlled ~ 9 => proposed
  */
-const PROPOSED_OR_CONTROLLED = 0;
+let PROPOSED_OR_CONTROLLED = 4;
 
 
 // ============ ここから本体部分 ============================== //
@@ -53,6 +57,15 @@ chrome.runtime.onMessage.addListener(data => {
     proposedNotificationTapCount = 0;
     controlledNotificationTapCount = 0;
     isPlayed = true;
+
+    // どの手法を使うかを決定
+    // proposed or controlled
+    t = data.options.PROPOSED_OR_CONTROLLED;
+    if(t === "proposed"){
+      PROPOSED_OR_CONTROLLED = 0;
+    }else{
+      PROPOSED_OR_CONTROLLED = 1;
+    }
   }
 
   // ===== 言語とテーマ名とタブid(0,1,2)を取得 ========= //
@@ -93,14 +106,7 @@ chrome.runtime.onMessage.addListener(data => {
       DATA[target_id].ideas.push(added_idea);
     }catch(error){
       console.log("データが作成できてないよエラー : " + error );
-      // chrome.tabs.update(errorTabId[0],{active:true});
-      // chrome.scripting.executeScript({
-
-      //   target: { tabId: errorTabId[0] },
-      
-      //   func: () => window.alert("データの生成でエラーが生じました！\n実験をやり直してください")
-      
-      // });
+      console.log(DATA);
       chrome.tabs.create({url:`html/error.html?m=${error}`});
     }
     console.log(DATA);
@@ -108,14 +114,16 @@ chrome.runtime.onMessage.addListener(data => {
 
   // ==== 集中検知! notificationを出す！ =========== //
   else if(data.type === "concentrated"){
-    // DATAが空のときにエラーを出す
+    // detectCountを取り出す．
+    detectCount = data.options.detectCount;
 
     // proposed or controlled
     p = getRandomInt(10);
-    if(p >= PROPOSED_OR_CONTROLLED){
+    if(PROPOSED_OR_CONTROLLED === 0){
+      // PROPOSED_OR_CONTROLLED += 1;
       try{
         keywords = JSON.parse(data.options.keywords);
-        keyword = keywords[0];
+        keyword = keywords[detectCount];
       }catch(error){
         console.log("キーワードがJSON形式じゃないよエラー : " + error);
         keyword = {
@@ -169,9 +177,12 @@ chrome.runtime.onMessage.addListener(data => {
   
       // LLMによるアイデアとnotificationの実施
       NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x,keyword);
+      numberOfProposedMethod += 1;
     }else{
       try{
+        // PROPOSED_OR_CONTROLLED -= 1;
         callControlledMethod();
+        numberOfControlledMethod += 1;
       }catch(e){
         // chrome.scripting.executeScript({
 
@@ -189,6 +200,8 @@ chrome.runtime.onMessage.addListener(data => {
   else if(data.type === "stop"){
     console.log("実験終了!");
     console.log(DATA);
+    console.log(`提案手法の通知回数は${numberOfProposedMethod}`);
+    console.log(`制御手法の通知回数は${numberOfControlledMethod}`);
     console.log(`提案手法の通知のタップ回数は${proposedNotificationTapCount}`);
     console.log(`制御手法の通知のタップ回数は${controlledNotificationTapCount}`);
     isPlayed = false;
@@ -226,16 +239,19 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
 
       #制約条件
       - 必ず一つのアイデアのみを生成すること
-      - 生成したアイデアは以下の構成をとること
-      - テーマに沿う内容にすること．特に誰がターゲットとなっていてその問題点は何かをできる限り挙げ，それらを解決できるように考えること．
+      - 必ずインパクトのある短いアイデア名にすること
+      - 生成したアイデアは以下のJSON形式で出力すること
+      - アイデア名は15字以下にすること
+      - アイデアの詳細説明は60字以下にすること
+      - テーマに沿う内容にすること．生成したアイデアがテーマと合致しているものになるようにしてください．
       - キーワードの情報も考慮してください．
-      - キーワードはできるだけそのまま含めるようにしてください．
+      - ユーザーが興味を持つようなアイデアを生成してください．
       
       #生成するアイデアの構成
-      「アイデアのタイトル名」
-      その詳しい内容を説明
-      - アイデアのタイトル名は15字以下
-      - その説明は全体で60字以下
+      [{
+        "title":"「アイデア名」",
+        "content":"アイデアの詳細説明"
+      }]
 
       以下に例を示します．出力方法の参考にしてください．
 
@@ -250,19 +266,18 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
       MLBのエンゼルス所属、投打の二刀流選手。異例の才能と成績で注目を浴びる。
 
       => 生成する内容
-      「大谷翔平の野球教室VR」
-      VR上で大谷翔平のバッティングおよびピッチングのモーションを再現し，ユーザーがそれを体験できるようにすることで練習できる．
+      [{"title":"「大谷翔平の野球教室VR」","content":"VR上で大谷翔平のバッティングおよびピッチングのモーションを再現し，ユーザーがそれを体験できるようにすることで練習できる．"}]
 
       `
     }
     ];
   }else{
     // English用のプロンプト
-    messages = [
-      {role:"system", content: `
-      You are a brilliant inventor who helps users.
+    messages = [ 
+      {role: "system", content: `
+      You are a good inventor and help the user.
       Your goal is to present ideas that will interest the user.
-      Here are the instructions for your job. First, below you will be given a theme that the user has set, the user's idea for that theme, and keywords from the news that the user is reading right now.
+      Here are the instructions for your job. First, you will be given a theme, your idea, and keywords from the news you are reading, along with information about the theme.
 
       #theme
       ${theme}
@@ -270,35 +285,39 @@ function MakePrompt(isJapanese,theme,keyword,original_idea){
       #user_idea
       ${original_idea}
 
-      #Keyword
-      ${keyword}
+      #Keywords and information about them
+      ${keyword.keyword}
+      ${keyword.info}
 
-      Now generate one new idea that combines the user's idea and the keyword. The constraints are as follows.
+      Now generate one new idea that combines the user's idea and the keywords. The constraints are as follows.
 
       #Constraints
       - Only one idea must be generated.
-      - The generated idea must have the following structure.
+      - The generated idea must have the following structure
+      - The content should be consistent with the theme. The content should be in line with the theme, especially who the target audience is and what their problems are, as much as possible, and the idea should be designed to solve those problems.
+      - Keyword information should also be considered.
       
-      #Constraints Only one idea must be generated.
-      "Title of the new idea"
-      A detailed description of the idea or the process that led to the idea
-      - The title of the idea should be no more than 20 words long.
-      - The description should be no more than 100 words in total.
+      #Structure of ideas to be generated
+      Title of the idea
+      A detailed description of the idea
+      - The title of the idea should be no more than 15 words.
+      - The total length of the description should be no more than 60 words.
 
       An example is shown below. Please refer to the output method.
 
-      #Theme
-      Development of New Electrical Products
+      #Topic
+      Problem of sports education
 
-      #User's idea
-      Headphones Equipped with New Features
+      #User Idea
+      Enable users to receive coaching from coaches by VR without being restricted by location.
 
-      #Keyword
-      Beating noise pollution with smart tech
+      #Keyword(s) and their information
+      Shohei Ohtani
+      A two-sport athlete who pitches and hits for the Angels of the MLB. He has attracted attention for his exceptional talent and performance.
 
-      => Generated content
-      "Noise-cancelling Headphones"
-      a type of headphones designed to reduce or cancel out external noise.
+      => Generate content
+      "Shohei Otani's Baseball Classroom VR"
+      Reproduces Shohei Otani's batting and pitching motions in VR so that users can experience and practice them.
       `}
     ];
 
@@ -364,6 +383,30 @@ function getRandomInt(max){
 }
 
 /**
+ * 文字列中のJSONを取り出す
+ */
+function extractJSONFromString(inputString) {
+  const jsonPattern = /\{[\s\S]*?\}/; // 最初に見つかる { から最後の } までの部分文字列を抽出する正規表現
+
+  const match = inputString.match(jsonPattern);
+
+  if (match) {
+      const jsonString = match[0];
+      try {
+          const jsonObject = JSON.parse(jsonString);
+          return jsonObject;
+      } catch (error) {
+          console.error('JSONの解析に失敗しました:', error);
+          return null;
+      }
+  } else {
+      console.error('JSONが見つかりませんでした');
+      return null;
+  }
+}
+
+
+/**
  * 提案手法 : LLMにより生成されたアイデアを通知する
  * @param {json} data 
  * @param {boolean} isJapanese 
@@ -384,7 +427,7 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
       "Access-Control-Allow-Origin": "*",
     },
     body: JSON.stringify({
-      model: "gpt-3.5-turbo-1106", //gpt4
+      model: "gpt-4-1106-preview", //gpt-4-1106-preview
       messages: messages,
       max_tokens: 256,
       temperature: 0.9,
@@ -398,11 +441,21 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
   }
 
   const new_idea = await IdeaCreatedByLLM.json();
-  LLM_proposed_idea =  new_idea.choices[0].message.content;
+  LLM_proposed_idea =  extractJSONFromString(new_idea.choices[0].message.content);
   console.log(LLM_proposed_idea);
-  data.options.message = LLM_proposed_idea;
+
+  data.options.message = "例えば \n" + "**" + LLM_proposed_idea.title + "**";
+  // 通知のbutton作成
+  const button1  = {
+    title : "アイデアを見る",
+    iconUrl : "/img/icon.png"
+  };
+  data.options.buttons = [button1];
+
   if(!isJapanese){
     data.options.title = "A new idea was invented!";
+  }else{
+    data.options.title = `「${keyword.keyword}」と組み合わせてみませんか？`;
   }
   data.options.eventTime += Date.now();
   // make a notification to user
@@ -413,7 +466,7 @@ async function NewIdeaFromLLM(data,isJapanese,theme,original_idea,target_id,id_x
   llm_ids.push(target_id);
   llm_json = {
     id : tt,
-    new_idea : LLM_proposed_idea,
+    new_idea : LLM_proposed_idea.title + "\n" + LLM_proposed_idea.content,
     target_id : llm_ids
   }
   console.log("保存するデータ");
